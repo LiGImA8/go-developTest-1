@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: minigate
+      MYSQL_USER: minigate
+      MYSQL_PASSWORD: minigate
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+  user-service:
+    build: .
+    command: ["/usr/local/bin/user-service"]
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: minigate
+      MYSQL_PASSWORD: minigate
+      MYSQL_DB: minigate
+      USER_GRPC_ADDR: :50051
+    depends_on:
+      - mysql
+    ports:
+      - "50051:50051"
+
+  log-service:
+    build: .
+    command: ["/usr/local/bin/log-service"]
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: minigate
+      MYSQL_PASSWORD: minigate
+      MYSQL_DB: minigate
+      ZMQ_BIND_ENDPOINT: tcp://*:5557
+    depends_on:
+      - mysql
+    ports:
+      - "5557:5557"
+
+  order-service:
+    build: .
+    command: ["/usr/local/bin/order-service"]
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: minigate
+      MYSQL_PASSWORD: minigate
+      MYSQL_DB: minigate
+      USER_SERVICE_ADDR: user-service:50051
+      ORDER_GRPC_ADDR: :50052
+      ZMQ_LOG_ENDPOINT: tcp://log-service:5557
+    depends_on:
+      - mysql
+      - user-service
+      - log-service
+    ports:
+      - "50052:50052"
