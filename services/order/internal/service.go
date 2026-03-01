@@ -8,21 +8,27 @@ import (
 	"minigate/pkg/logger"
 	"minigate/pkg/rpc"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type Service struct {
 	db         *sql.DB
-	userClient *rpc.UserServiceClient
+	userClient UserTokenValidator
 	publisher  *logger.Publisher
 }
 
-func NewService(db *sql.DB, userClient *rpc.UserServiceClient, publisher *logger.Publisher) *Service {
+type UserTokenValidator interface {
+	ValidateToken(context.Context, *rpc.ValidateTokenRequest) (*rpc.ValidateTokenResponse, error)
+}
+
+func NewService(db *sql.DB, userClient UserTokenValidator, publisher *logger.Publisher) *Service {
 	return &Service{db: db, userClient: userClient, publisher: publisher}
 }
 
 func (s *Service) PlaceOrder(ctx context.Context, req *rpc.PlaceOrderRequest) (*rpc.PlaceOrderResponse, error) {
+	zap.L().Info("place order request received", zap.String("item_name", req.ItemName), zap.Int32("quantity", req.Quantity))
 	if req.Quantity <= 0 || req.ItemName == "" {
 		return nil, status.Error(codes.InvalidArgument, "item_name and positive quantity are required")
 	}
@@ -31,6 +37,7 @@ func (s *Service) PlaceOrder(ctx context.Context, req *rpc.PlaceOrderRequest) (*
 		return nil, status.Error(codes.Unavailable, err.Error())
 	}
 	if !validResp.Valid {
+		zap.L().Warn("place order rejected: token invalid")
 		return nil, status.Error(codes.Unauthenticated, "token invalid")
 	}
 	res, err := s.db.ExecContext(ctx, `INSERT INTO orders(user_id, item_name, quantity, status) VALUES(?,?,?,?)`, validResp.UserID, req.ItemName, req.Quantity, "CREATED")
@@ -43,5 +50,6 @@ func (s *Service) PlaceOrder(ctx context.Context, req *rpc.PlaceOrderRequest) (*
 		Action:  "create_order",
 		Message: fmt.Sprintf("order=%d user=%d item=%s qty=%d", orderID, validResp.UserID, req.ItemName, req.Quantity),
 	})
+	zap.L().Info("order created", zap.Int64("order_id", orderID), zap.Int64("user_id", validResp.UserID), zap.String("item_name", req.ItemName), zap.Int32("quantity", req.Quantity))
 	return &rpc.PlaceOrderResponse{OrderID: orderID, Status: "CREATED"}, nil
 }

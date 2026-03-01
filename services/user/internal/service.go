@@ -10,6 +10,8 @@ import (
 
 	"minigate/pkg/rpc"
 
+	"go.uber.org/zap"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -19,6 +21,7 @@ type Service struct{ db *sql.DB }
 func NewService(db *sql.DB) *Service { return &Service{db: db} }
 
 func (s *Service) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginResponse, error) {
+	zap.L().Info("login request received", zap.String("username", req.Username))
 	if req.Username == "" || req.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "username/password required")
 	}
@@ -32,6 +35,7 @@ func (s *Service) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginR
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	if dbPass != req.Password {
+		zap.L().Warn("login failed: invalid password", zap.String("username", req.Username))
 		return nil, status.Error(codes.Unauthenticated, "invalid password")
 	}
 	token, err := randomToken()
@@ -42,10 +46,12 @@ func (s *Service) Login(ctx context.Context, req *rpc.LoginRequest) (*rpc.LoginR
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	zap.L().Info("login succeeded", zap.Int64("user_id", userID), zap.String("username", req.Username))
 	return &rpc.LoginResponse{Token: token, UserID: userID}, nil
 }
 
 func (s *Service) ValidateToken(ctx context.Context, req *rpc.ValidateTokenRequest) (*rpc.ValidateTokenResponse, error) {
+	zap.L().Info("validate token request received")
 	if req.Token == "" {
 		return &rpc.ValidateTokenResponse{Valid: false}, nil
 	}
@@ -62,6 +68,7 @@ func (s *Service) ValidateToken(ctx context.Context, req *rpc.ValidateTokenReque
 		}
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	zap.L().Info("validate token succeeded", zap.Int64("user_id", userID), zap.String("username", username))
 	return &rpc.ValidateTokenResponse{Valid: true, UserID: userID, Username: username}, nil
 }
 
