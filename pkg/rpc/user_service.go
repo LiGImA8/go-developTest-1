@@ -32,7 +32,7 @@ func (c *UserServiceClient) ValidateToken(ctx context.Context, in *ValidateToken
 	return out, err
 }
 
-func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
+func RegisterUserServiceServer(s *grpc.Server, srv UserServiceServer) {
 	s.RegisterService(&grpc.ServiceDesc{
 		ServiceName: UserServiceName,
 		HandlerType: (*UserServiceServer)(nil),

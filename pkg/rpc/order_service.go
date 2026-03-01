@@ -22,7 +22,7 @@ func (c *OrderServiceClient) PlaceOrder(ctx context.Context, in *PlaceOrderReque
 	return out, err
 }
 
-func RegisterOrderServiceServer(s grpc.ServiceRegistrar, srv OrderServiceServer) {
+func RegisterOrderServiceServer(s *grpc.Server, srv OrderServiceServer) {
 	s.RegisterService(&grpc.ServiceDesc{
 		ServiceName: OrderServiceName,
 		HandlerType: (*OrderServiceServer)(nil),

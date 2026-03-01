@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pebbe/zmq4"
+	zmq4 "github.com/go-zeromq/zmq4"
 )
 
 type Event struct {
@@ -17,15 +17,12 @@ type Event struct {
 }
 
 type Publisher struct {
-	socket *zmq4.Socket
+	socket zmq4.Socket
 }
 
 func NewPublisher(endpoint string) (*Publisher, error) {
-	socket, err := zmq4.NewSocket(zmq4.PUSH)
-	if err != nil {
-		return nil, err
-	}
-	if err := socket.Connect(endpoint); err != nil {
+	socket := zmq4.NewPush(context.Background())
+	if err := socket.Dial(endpoint); err != nil {
 		return nil, err
 	}
 	return &Publisher{socket: socket}, nil
@@ -43,7 +40,7 @@ func (p *Publisher) Publish(ctx context.Context, event Event) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		_, err = p.socket.SendBytes(payload, 0)
+		err = p.socket.Send(zmq4.NewMsg(payload))
 		if err != nil {
 			return fmt.Errorf("send zmq: %w", err)
 		}
