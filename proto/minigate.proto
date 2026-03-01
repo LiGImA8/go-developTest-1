@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package minigate.v1;
+
+option go_package = "minigate/gen/minigate/v1;minigatev1";
+
+service UserService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+service OrderService {
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string token = 1;
+  int64 user_id = 2;
+}
+
+message ValidateTokenRequest {
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  int64 user_id = 2;
+  string username = 3;
+}
+
+message PlaceOrderRequest {
+  string token = 1;
+  string item_name = 2;
+  int32 quantity = 3;
+}
+
+message PlaceOrderResponse {
+  int64 order_id = 1;
+  string status = 2;
+}
